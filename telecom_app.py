@@ -16,16 +16,18 @@ model = joblib.load("churn_model.pkl")
 df = pd.read_csv("final_telco.csv")
 expected_features = model.feature_names_in_
 
+# Encoding maps
+gender_map = {"Male": 1, "Female": 0, "Other": 2}
+internet_type_map = {"Fiber optic": 0, "DSL": 1, "None": 2}
+payment_map = {name: i for i, name in enumerate(df["Payment Method"].astype(str).unique())}
+internet_service_map = {name: i for i, name in enumerate(df["Internet Service"].astype(str).unique())}
+
 # Streamlit page config
 st.set_page_config(page_title="Telecom Feedback Collector", layout="centered")
 st.markdown("# 📞 Telecom Feedback Collector")
 st.markdown("### 📋 Submit Customer Feedback")
-st.write("Fill out this form to record telecom customer data and predict churn.")
 
-# Feedback form
 with st.form("churn_form"):
-    st.markdown("### 📝 Customer Information")
-
     col1, col2 = st.columns(2)
 
     with col1:
@@ -36,9 +38,9 @@ with st.form("churn_form"):
         married = st.selectbox("Married", ["Yes", "No"])
         dependents = st.selectbox("Dependents", ["Yes", "No"])
         num_dependents = st.number_input("Number of Dependents", 0, 10, 0)
+        zip_code = st.text_input("Zip Code", "411001")
         state = st.text_input("State", "Maharashtra")
         county = st.text_input("County", "Pune")
-        zip_code = st.text_input("Zip Code", "411001")
         area_codes = st.text_input("Area Code", "0731")
         arpu = st.number_input("ARPU", 0.0)
         arpu_4g = st.number_input("ARPU 4G", 0.0)
@@ -63,9 +65,9 @@ with st.form("churn_form"):
         num_referrals = st.number_input("Number of Referrals", 0, 20, 0)
         phone_service = st.selectbox("Phone Service", ["Yes", "No"])
         multiple_lines = st.selectbox("Multiple Lines", ["Yes", "No"])
-        internet_type = st.selectbox("Internet Type", ["Fiber optic", "DSL", "None"])
+        internet_type = st.selectbox("Internet Type", list(internet_type_map.keys()))
         stream_data = st.number_input("Streaming Data Consumption", value=0.0)
-        internet_service = st.selectbox("Internet Service", ["Fiber optic", "DSL", "No"])
+        internet_service = st.selectbox("Internet Service", list(internet_service_map.keys()))
         online_sec = st.selectbox("Online Security", ["Yes", "No"])
         online_backup = st.selectbox("Online Backup", ["Yes", "No"])
         device_protect = st.selectbox("Device Protection Plan", ["Yes", "No"])
@@ -74,7 +76,7 @@ with st.form("churn_form"):
         stream_movies = st.selectbox("Streaming Movies", ["Yes", "No"])
         stream_music = st.selectbox("Streaming Music", ["Yes", "No"])
         unlimited_data = st.selectbox("Unlimited Data", ["Yes", "No"])
-        payment_method = st.text_input("Payment Method", "Credit Card")
+        payment_method = st.selectbox("Payment Method", list(payment_map.keys()))
         satisfaction = st.slider("Satisfaction Score", 0, 10, 5)
 
     submitted = st.form_submit_button("Submit")
@@ -85,15 +87,15 @@ with st.form("churn_form"):
         input_dict = {
             'Month': month,
             'Month of Joining': month_join,
-            'Gender': gender,
+            'Gender': gender_map.get(gender, 0),
             'Age': age,
             'Married': encode_yn(married),
             'Dependents': encode_yn(dependents),
             'Number of Dependents': num_dependents,
-            'zip_code': zip_code,
-            'state': state,
-            'county': county,
-            'area_codes': area_codes,
+            'zip_code': int(zip_code),
+            'state': 0,
+            'county': 0,
+            'area_codes': 0,
             'arpu': arpu,
             'arpu_4g': arpu_4g,
             'arpu_5g': arpu_5g,
@@ -115,9 +117,9 @@ with st.form("churn_form"):
             'Number of Referrals': num_referrals,
             'Phone Service': encode_yn(phone_service),
             'Multiple Lines': encode_yn(multiple_lines),
-            'Internet Type': internet_type,
+            'Internet Type': internet_type_map.get(internet_type, 0),
             'Streaming Data Consumption': stream_data,
-            'Internet Service': internet_service,
+            'Internet Service': internet_service_map.get(internet_service, 0),
             'Online Security': encode_yn(online_sec),
             'Online Backup': encode_yn(online_backup),
             'Device Protection Plan': encode_yn(device_protect),
@@ -126,33 +128,30 @@ with st.form("churn_form"):
             'Streaming Movies': encode_yn(stream_movies),
             'Streaming Music': encode_yn(stream_music),
             'Unlimited Data': encode_yn(unlimited_data),
-            'Payment Method': payment_method,
-            'Satisfaction Score': satisfaction
+            'Payment Method': payment_map.get(payment_method, 0),
+            'Satisfaction Score': satisfaction,
         }
 
-        new_row = pd.DataFrame([input_dict])
+        # Add dummy columns with 0.0 for unused ones
+        for col in expected_features:
+            if col not in input_dict:
+                input_dict[col] = 0.0
 
-        # Encode categorical columns if needed (you can customize this)
-        for col in ['Gender', 'state', 'county', 'area_codes', 'Internet Type', 'Payment Method']:
-            new_row[col] = new_row[col].astype("category").cat.codes
-
-        # Add missing features with 0.0
-        for feature in expected_features:
-            if feature not in new_row.columns:
-                new_row[feature] = 0.0
+        input_df = pd.DataFrame([input_dict])
 
         try:
-            input_for_model = new_row[expected_features]
+            input_for_model = input_df[expected_features]
             prediction = model.predict(input_for_model)[0]
             churn_value = int(prediction)
-            new_row["Churn Value"] = churn_value
+
+            input_df["Churn Value"] = churn_value
 
             # Save feedback
             feedback_file = "feedback_data.csv"
             if os.path.exists(feedback_file):
-                new_row.to_csv(feedback_file, mode="a", header=False, index=False)
+                input_df.to_csv(feedback_file, mode="a", header=False, index=False)
             else:
-                new_row.to_csv(feedback_file, mode="w", header=True, index=False)
+                input_df.to_csv(feedback_file, mode="w", header=True, index=False)
 
             st.success("✅ Submission successful!")
             st.subheader("📊 Churn Prediction")
@@ -163,5 +162,4 @@ with st.form("churn_form"):
 
 # Footer
 st.markdown("---")
-st.markdown("Page built by [Adarsh Agrawal](https://www.linkedin.com/in/adarsh-agrawal-3b0a76268/) 💼")
-st.markdown("Data collected will be used for analysis and improving customer service.")
+st.markdown("Page built by [Adarsh Agrawal](https://www.linkedin.com/in/adarsh-agrawal-3b0a76268/)")
