@@ -50,7 +50,7 @@ with st.form("feedback_form"):
 
     submitted = st.form_submit_button("Submit")
 
-        if submitted:
+    if submitted:
         # Convert Yes/No to 1/0
         married = 1 if married_display == "Yes" else 0
         online_backup_val = 1 if online_backup == "Yes" else 0
@@ -106,10 +106,11 @@ with st.form("feedback_form"):
 
             st.success("✅ Submission successful!")
             st.subheader("📊 Churn Prediction")
-            st.write("Predicted Churn:", "**Yes**" if prediction == 1 else "**No**")
+            st.write("Predicted Churn:", "**Yes**" if churn_value == 1 else "**No**")
 
         except Exception as e:
             st.warning(f"⚠️ Prediction failed: {e}")
+
 # Footer
 st.markdown("---")
 st.markdown("Page built by [Adarsh Agrawal](https://www.linkedin.com/in/adarsh-agrawal-3b0a76268/) 💼")
