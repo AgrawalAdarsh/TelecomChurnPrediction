@@ -32,7 +32,7 @@ with st.form("feedback_form"):
         married_display = st.selectbox("Married", ["Yes", "No"])
         dependents = st.number_input("Number of Dependents", min_value=0, value=0)
         state = st.text_input("State", placeholder="e.g. Maharashtra")
-        county = st.text_input("County", placeholder="e.g. Pune")
+        country = st.text_input("Country", placeholder="e.g. India")
         area_codes = st.text_input("Area Codes", placeholder="e.g. 0731")
         roam_ic = st.number_input("Roaming Incoming", value=0.0)
         roam_og = st.number_input("Roaming Outgoing", value=0.0)
