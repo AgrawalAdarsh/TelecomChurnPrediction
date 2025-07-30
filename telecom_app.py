@@ -72,7 +72,7 @@ with st.form("feedback_form"):
             "Married": yn(married_display),
             "Number of Dependents": dependents,
             "state": state,
-            "county": county,
+            "country": country,
             "area_codes": area_codes,
             "roam_ic": roam_ic,
             "roam_og": roam_og,
@@ -99,7 +99,7 @@ with st.form("feedback_form"):
         }])
 
         # Encode categorical columns
-        for col in ["Gender", "state", "county", "area_codes", "Internet Service", "Payment Method"]:
+        for col in ["Gender", "state", "country", "area_codes", "Internet Service", "Payment Method"]:
             new_row[col] = new_row[col].astype("category").cat.codes
 
         try:
