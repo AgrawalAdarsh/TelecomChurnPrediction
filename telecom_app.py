@@ -1,0 +1,98 @@
+import streamlit as st
+import pandas as pd
+import os
+import gdown
+import joblib
+# Only download if not already present
+if not os.path.exists("churn_model.pkl"):
+    gdown.download(id="YOUR_MODEL_FILE_ID", output="churn_model.pkl", quiet=False)
+
+if not os.path.exists("final_telco.csv"):
+    gdown.download(id="YOUR_CSV_FILE_ID", output="final_telco.csv", quiet=False)
+
+# Load your model and data
+model = joblib.load("churn_model.pkl")
+df = pd.read_csv("final_telco.csv")
+
+st.set_page_config(page_title="Telecom Feedback Collector", layout="centered")
+st.markdown("# 📞 Telecom Feedback Collector")
+st.markdown("### 📋 Submit Customer Feedback")
+st.write("Fill out this form to record telecom customer data.")
+
+with st.form("feedback_form"):
+    col1, col2 = st.columns(2)
+
+    with col1:
+        gender = st.selectbox("Gender", ["Male", "Female", "Other"])
+        age = st.number_input("Age", min_value=18, max_value=100, value=25)
+        married_display = st.selectbox("Married", ["Yes", "No"])  # Human-friendly
+        dependents = st.number_input("Number of Dependents", min_value=0, value=0)
+        state = st.text_input("State", placeholder="e.g. Madhya Pradesh")
+        county = st.text_input("County", placeholder="e.g. India")
+        area_codes = st.text_input("Area Codes", placeholder="e.g. 0731")
+        roam_ic = st.text_input("Roaming Incoming", placeholder="e.g. 20.5")
+        roam_og = st.text_input("Roaming Outgoing", placeholder="e.g. 15.0")
+        loc_og_t2m = st.text_input("Local OG T2M", placeholder="e.g. 50.2")
+
+    with col2:
+        online_backup = st.selectbox("Online Backup", ["Yes", "No"])
+        device_protect = st.selectbox("Device Protection Plan", ["Yes", "No"])
+        tech_support = st.selectbox("Premium Tech Support", ["Yes", "No"])
+        stream_tv = st.selectbox("Streaming TV", ["Yes", "No"])
+        stream_movies = st.selectbox("Streaming Movies", ["Yes", "No"])
+        stream_music = st.selectbox("Streaming Music", ["Yes", "No"])
+        unlimited_data = st.selectbox("Unlimited Data", ["Yes", "No"])
+        payment_method = st.text_input("Payment Method", placeholder="e.g. Credit Card")
+        satisfaction = st.slider("Satisfaction Score", min_value=0, max_value=10, value=5)
+        churn_display = st.selectbox("Will the customer churn?", ["No", "Yes"])
+
+    submitted = st.form_submit_button("Submit")
+
+    if submitted:
+        # Convert Yes/No to 1/0
+        married = 1 if married_display == "Yes" else 0
+        churn_value = 1 if churn_display == "Yes" else 0
+        online_backup_val = 1 if online_backup == "Yes" else 0
+        device_protect_val = 1 if device_protect == "Yes" else 0
+        tech_support_val = 1 if tech_support == "Yes" else 0
+        stream_tv_val = 1 if stream_tv == "Yes" else 0
+        stream_movies_val = 1 if stream_movies == "Yes" else 0
+        stream_music_val = 1 if stream_music == "Yes" else 0
+        unlimited_data_val = 1 if unlimited_data == "Yes" else 0
+
+        new_row = pd.DataFrame([{
+            "Gender": gender,
+            "Age": age,
+            "Married": married,
+            "Number of Dependents": dependents,
+            "state": state,
+            "county": county,
+            "area_codes": area_codes,
+            "roam_ic": roam_ic,
+            "roam_og": roam_og,
+            "loc_og_t2m": loc_og_t2m,
+            "Online Backup": online_backup_val,
+            "Device Protection Plan": device_protect_val,
+            "Premium Tech Support": tech_support_val,
+            "Streaming TV": stream_tv_val,
+            "Streaming Movies": stream_movies_val,
+            "Streaming Music": stream_music_val,
+            "Unlimited Data": unlimited_data_val,
+            "Payment Method": payment_method,
+            "Satisfaction Score": satisfaction,
+            "Churn Value": churn_value
+        }])
+
+        feedback_file = "feedback_data.csv"
+        if os.path.exists(feedback_file):
+            new_row.to_csv(feedback_file, mode='a', index=False, header=False)
+        else:
+            new_row.to_csv(feedback_file, mode='w', index=False, header=True)
+
+        st.success("✅ Submission successful!")
+
+# Footer
+st.markdown("---")
+st.markdown("Page built by [Adarsh Agrawal](https://www.linkedin.com/in/adarsh-agrawal-3b0a76268/) 💼")
+st.markdown("Data collected will be used for analysis and improving customer service.")
+st.markdown("Feel free to reach out for any queries or suggestions!")
