@@ -3,29 +3,32 @@ import pandas as pd
 import os
 import gdown
 import joblib
-# Only download if not already present
+
+# Download model and dataset if not already present
 if not os.path.exists("churn_model.pkl"):
     gdown.download(id="1tny8CuUQi8dIMXfLG4-f83Q4-FOu8Yid", output="churn_model.pkl", quiet=False)
 
 if not os.path.exists("final_telco.csv"):
     gdown.download(id="1YqVkzauyfM7SVcU7cRgLbVWkVeloJTl2", output="final_telco.csv", quiet=False)
 
-# Load your model and data
+# Load model and data
 model = joblib.load("churn_model.pkl")
 df = pd.read_csv("final_telco.csv")
 
+# Streamlit page config
 st.set_page_config(page_title="Telecom Feedback Collector", layout="centered")
 st.markdown("# 📞 Telecom Feedback Collector")
 st.markdown("### 📋 Submit Customer Feedback")
 st.write("Fill out this form to record telecom customer data.")
 
+# Feedback form
 with st.form("feedback_form"):
     col1, col2 = st.columns(2)
 
     with col1:
         gender = st.selectbox("Gender", ["Male", "Female", "Other"])
         age = st.number_input("Age", min_value=18, max_value=100, value=25)
-        married_display = st.selectbox("Married", ["Yes", "No"])  # Human-friendly
+        married_display = st.selectbox("Married", ["Yes", "No"])
         dependents = st.number_input("Number of Dependents", min_value=0, value=0)
         state = st.text_input("State", placeholder="e.g. Madhya Pradesh")
         county = st.text_input("County", placeholder="e.g. India")
@@ -60,6 +63,7 @@ with st.form("feedback_form"):
         stream_music_val = 1 if stream_music == "Yes" else 0
         unlimited_data_val = 1 if unlimited_data == "Yes" else 0
 
+        # Form a new row
         new_row = pd.DataFrame([{
             "Gender": gender,
             "Age": age,
@@ -83,13 +87,26 @@ with st.form("feedback_form"):
             "Churn Value": churn_value
         }])
 
+        # Save to CSV
         feedback_file = "feedback_data.csv"
         if os.path.exists(feedback_file):
             new_row.to_csv(feedback_file, mode='a', index=False, header=False)
         else:
             new_row.to_csv(feedback_file, mode='w', index=False, header=True)
 
-        st.success("✅ Submission successful!")
+        # Prepare input for prediction
+        input_for_model = new_row.drop(columns=["Churn Value"]).copy()
+        categorical_cols = ["Gender", "state", "county", "area_codes", "Payment Method"]
+        for col in categorical_cols:
+            input_for_model[col] = input_for_model[col].astype("category").cat.codes
+
+        try:
+            prediction = model.predict(input_for_model)[0]
+            st.success("✅ Submission successful!")
+            st.subheader("📊 Churn Prediction")
+            st.write("Predicted Churn:", "**Yes**" if prediction == 1 else "**No**")
+        except Exception as e:
+            st.warning(f"⚠️ Prediction failed: {e}")
 
 # Footer
 st.markdown("---")
