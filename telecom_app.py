@@ -14,12 +14,13 @@ if not os.path.exists("final_telco.csv"):
 # Load model and data
 model = joblib.load("churn_model.pkl")
 df = pd.read_csv("final_telco.csv")
+expected_features = model.feature_names_in_
 
 # Streamlit page config
 st.set_page_config(page_title="Telecom Feedback Collector", layout="centered")
 st.markdown("# 📞 Telecom Feedback Collector")
 st.markdown("### 📋 Submit Customer Feedback")
-st.write("Fill out this form to record telecom customer data.")
+st.write("Fill out this form to record telecom customer data and predict churn.")
 
 # Feedback form
 with st.form("feedback_form"):
@@ -30,14 +31,24 @@ with st.form("feedback_form"):
         age = st.number_input("Age", min_value=18, max_value=100, value=25)
         married_display = st.selectbox("Married", ["Yes", "No"])
         dependents = st.number_input("Number of Dependents", min_value=0, value=0)
-        state = st.text_input("State", placeholder="e.g. Madhya Pradesh")
-        county = st.text_input("County", placeholder="e.g. India")
+        state = st.text_input("State", placeholder="e.g. Maharashtra")
+        county = st.text_input("County", placeholder="e.g. Pune")
         area_codes = st.text_input("Area Codes", placeholder="e.g. 0731")
-        roam_ic = st.text_input("Roaming Incoming", placeholder="e.g. 20.5")
-        roam_og = st.text_input("Roaming Outgoing", placeholder="e.g. 15.0")
-        loc_og_t2m = st.text_input("Local OG T2M", placeholder="e.g. 50.2")
+        roam_ic = st.number_input("Roaming Incoming", value=0.0)
+        roam_og = st.number_input("Roaming Outgoing", value=0.0)
+        loc_og_t2m = st.number_input("Local OG T2M", value=0.0)
+        std_og_t2m = st.number_input("STD OG T2M", value=0.0)
+        isd_og = st.number_input("ISD OG", value=0.0)
+        total_rech_amt = st.number_input("Total Recharge Amount", value=0.0)
+        total_rech_data = st.number_input("Total Recharge Data (GB)", value=0.0)
+        vol_4g = st.number_input("Volume 4G (GB)", value=0.0)
+        vol_5g = st.number_input("Volume 5G (GB)", value=0.0)
+        arpu = st.number_input("ARPU", value=0.0)
 
     with col2:
+        night_user = st.selectbox("Night Pack User", ["Yes", "No"])
+        fb_user = st.selectbox("Facebook User", ["Yes", "No"])
+        internet_service = st.selectbox("Internet Service", ["DSL", "Fiber optic", "No"])
         online_backup = st.selectbox("Online Backup", ["Yes", "No"])
         device_protect = st.selectbox("Device Protection Plan", ["Yes", "No"])
         tech_support = st.selectbox("Premium Tech Support", ["Yes", "No"])
@@ -52,20 +63,13 @@ with st.form("feedback_form"):
 
     if submitted:
         # Convert Yes/No to 1/0
-        married = 1 if married_display == "Yes" else 0
-        online_backup_val = 1 if online_backup == "Yes" else 0
-        device_protect_val = 1 if device_protect == "Yes" else 0
-        tech_support_val = 1 if tech_support == "Yes" else 0
-        stream_tv_val = 1 if stream_tv == "Yes" else 0
-        stream_movies_val = 1 if stream_movies == "Yes" else 0
-        stream_music_val = 1 if stream_music == "Yes" else 0
-        unlimited_data_val = 1 if unlimited_data == "Yes" else 0
+        def yn(val): return 1 if val == "Yes" else 0
 
-        # Form initial row (without churn)
+        # Construct DataFrame
         new_row = pd.DataFrame([{
             "Gender": gender,
             "Age": age,
-            "Married": married,
+            "Married": yn(married_display),
             "Number of Dependents": dependents,
             "state": state,
             "county": county,
@@ -73,36 +77,44 @@ with st.form("feedback_form"):
             "roam_ic": roam_ic,
             "roam_og": roam_og,
             "loc_og_t2m": loc_og_t2m,
-            "Online Backup": online_backup_val,
-            "Device Protection Plan": device_protect_val,
-            "Premium Tech Support": tech_support_val,
-            "Streaming TV": stream_tv_val,
-            "Streaming Movies": stream_movies_val,
-            "Streaming Music": stream_music_val,
-            "Unlimited Data": unlimited_data_val,
+            "std_og_t2m": std_og_t2m,
+            "isd_og": isd_og,
+            "total_rech_amt": total_rech_amt,
+            "total_rech_data": total_rech_data,
+            "vol_4g": vol_4g,
+            "vol_5g": vol_5g,
+            "arpu": arpu,
+            "night_pck_user": yn(night_user),
+            "fb_user": yn(fb_user),
+            "Internet Service": internet_service,
+            "Online Backup": yn(online_backup),
+            "Device Protection Plan": yn(device_protect),
+            "Premium Tech Support": yn(tech_support),
+            "Streaming TV": yn(stream_tv),
+            "Streaming Movies": yn(stream_movies),
+            "Streaming Music": yn(stream_music),
+            "Unlimited Data": yn(unlimited_data),
             "Payment Method": payment_method,
             "Satisfaction Score": satisfaction,
         }])
 
-        # Prepare input for model prediction
-        input_for_model = new_row.copy()
-        categorical_cols = ["Gender", "state", "county", "area_codes", "Payment Method"]
-        for col in categorical_cols:
-            input_for_model[col] = input_for_model[col].astype("category").cat.codes
+        # Encode categorical columns
+        for col in ["Gender", "state", "county", "area_codes", "Internet Service", "Payment Method"]:
+            new_row[col] = new_row[col].astype("category").cat.codes
 
         try:
+            input_for_model = new_row[expected_features]
             prediction = model.predict(input_for_model)[0]
             churn_value = int(prediction)
 
-            # Add predicted churn to the row
             new_row["Churn Value"] = churn_value
 
-            # Save to feedback CSV
+            # Save feedback
             feedback_file = "feedback_data.csv"
             if os.path.exists(feedback_file):
-                new_row.to_csv(feedback_file, mode='a', index=False, header=False)
+                new_row.to_csv(feedback_file, mode="a", header=False, index=False)
             else:
-                new_row.to_csv(feedback_file, mode='w', index=False, header=True)
+                new_row.to_csv(feedback_file, mode="w", header=True, index=False)
 
             st.success("✅ Submission successful!")
             st.subheader("📊 Churn Prediction")
@@ -115,4 +127,3 @@ with st.form("feedback_form"):
 st.markdown("---")
 st.markdown("Page built by [Adarsh Agrawal](https://www.linkedin.com/in/adarsh-agrawal-3b0a76268/) 💼")
 st.markdown("Data collected will be used for analysis and improving customer service.")
-st.markdown("Feel free to reach out for any queries or suggestions!")
