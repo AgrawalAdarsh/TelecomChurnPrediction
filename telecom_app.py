@@ -5,10 +5,10 @@ import gdown
 import joblib
 # Only download if not already present
 if not os.path.exists("churn_model.pkl"):
-    gdown.download(id="YOUR_MODEL_FILE_ID", output="churn_model.pkl", quiet=False)
+    gdown.download(id="1tny8CuUQi8dIMXfLG4-f83Q4-FOu8Yid", output="churn_model.pkl", quiet=False)
 
 if not os.path.exists("final_telco.csv"):
-    gdown.download(id="YOUR_CSV_FILE_ID", output="final_telco.csv", quiet=False)
+    gdown.download(id="1YqVkzauyfM7SVcU7cRgLbVWkVeloJTl2", output="final_telco.csv", quiet=False)
 
 # Load your model and data
 model = joblib.load("churn_model.pkl")
